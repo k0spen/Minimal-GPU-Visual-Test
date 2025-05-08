@@ -75,20 +75,20 @@
 
     rightArrow.addEventListener('click', () => {
       if (positionState === 'center') {
-       gsap.to(group.position, { x: -6, duration: 0.6, ease: "power2.out" });
+       gsap.to(group.position, { x: 0, duration: 0.6, ease: "power2.out" });
         positionState = 'right';
       } else if (positionState === 'left') {
-        gsap.to(group.position, { x: 0, duration: 0.6, ease: "power2.out" });
+        gsap.to(group.position, { x: 6, duration: 0.6, ease: "power2.out" });
         positionState = 'center';
       }
     });
 
     leftArrow.addEventListener('click', () => {
       if (positionState === 'center') {
-        gsap.to(group.position, { x: 6, duration: 0.6, ease: "power2.out" });
+        gsap.to(group.position, { x: 0, duration: 0.6, ease: "power2.out" });
         positionState = 'left';
       } else if (positionState === 'right') {
-        gsap.to(group.position, { x: 0, duration: 0.6, ease: "power2.out" });
+        gsap.to(group.position, { x: -6, duration: 0.6, ease: "power2.out" });
         positionState = 'center';
       }
     });
