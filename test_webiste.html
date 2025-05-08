@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gradient Sphere with Arrows</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+    .arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 96px;
+      font-weight: bold;
+      font-family: sans-serif;
+      user-select: none;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .arrow.left {
+      left: 20px;
+      color: yellow;
+    }
+    .arrow.right {
+      right: 20px;
+      color: orange;
+    }
+  </style>
+</head>
+<body>
+  <div class="arrow left">◀</div>
+  <div class="arrow right">▶</div>
+
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+    import gsap from 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/index.min.js';
+
+    let scene, camera, renderer, group, mouse = { x: 0, y: 0 };
+    let isOffscreen = false;
+
+    const leftArrow = document.querySelector('.arrow.left');
+    const rightArrow = document.querySelector('.arrow.right');
+
+    init();
+    animate();
+
+    function init() {
+      scene = new THREE.Scene();
+
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.z = 4;
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      scene.add(new THREE.AmbientLight(0x222222));
+      const light = new THREE.DirectionalLight(0xffffff, 1.5);
+      light.position.set(2, 2, 3);
+      scene.add(light);
+
+      group = createTriangleSphere();
+      scene.add(group);
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('resize', onWindowResize);
+
+      let positionState = 'center'; // 'left', 'center', 'right'
+
+    rightArrow.addEventListener('click', () => {
+      if (positionState === 'center') {
+       gsap.to(group.position, { x: 6, duration: 0.6, ease: "power2.out" });
+        positionState = 'right';
+      } else if (positionState === 'left') {
+        gsap.to(group.position, { x: 0, duration: 0.6, ease: "power2.out" });
+        positionState = 'center';
+      }
+    });
+
+    leftArrow.addEventListener('click', () => {
+      if (positionState === 'center') {
+        gsap.to(group.position, { x: -6, duration: 0.6, ease: "power2.out" });
+        positionState = 'left';
+      } else if (positionState === 'right') {
+        gsap.to(group.position, { x: 0, duration: 0.6, ease: "power2.out" });
+        positionState = 'center';
+      }
+    });
+
+    }
+
+    function createTriangleSphere() {
+      const baseGeometry = new THREE.SphereGeometry(1, 48, 32);
+      const pos = baseGeometry.attributes.position;
+      const index = baseGeometry.index;
+
+      const triangleGroup = new THREE.Group();
+
+      const indices = index.array;
+      const vertices = pos.array;
+
+      const frontColor = new THREE.Color(0x0000ff); // Blue
+      const backColor = new THREE.Color(0x800080);  // Purple
+
+      for (let i = 0; i < indices.length; i += 3) {
+        const a = indices[i] * 3;
+        const b = indices[i + 1] * 3;
+        const c = indices[i + 2] * 3;
+
+        const vA = new THREE.Vector3(vertices[a], vertices[a + 1], vertices[a + 2]);
+        const vB = new THREE.Vector3(vertices[b], vertices[b + 1], vertices[b + 2]);
+        const vC = new THREE.Vector3(vertices[c], vertices[c + 1], vertices[c + 2]);
+
+        const centroid = new THREE.Vector3().add(vA).add(vB).add(vC).divideScalar(3);
+        const depth = (centroid.z + 1.5) / 3;
+
+        const color = frontColor.clone().lerp(backColor, depth);
+
+        let opacity = 1.0;
+        if (depth > 0.65) {
+          opacity = 1.0 - (depth - 0.65) * 2;
+          opacity = Math.max(opacity, 0.1);
+        }
+
+        const material = new THREE.MeshStandardMaterial({
+          color: color,
+          flatShading: true,
+          side: THREE.DoubleSide,
+          transparent: opacity < 1,
+          opacity: opacity
+        });
+
+        const normal = new THREE.Vector3().crossVectors(
+          new THREE.Vector3().subVectors(vB, vA),
+          new THREE.Vector3().subVectors(vC, vA)
+        ).normalize();
+
+        const offset = normal.clone().multiplyScalar(0.03);
+
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          vA.clone().add(offset),
+          vB.clone().add(offset),
+          vC.clone().add(offset)
+        ]);
+
+        geometry.setIndex([0, 1, 2]);
+        geometry.computeVertexNormals();
+
+        const mesh = new THREE.Mesh(geometry, material);
+        triangleGroup.add(mesh);
+      }
+
+      return triangleGroup;
+    }
+
+    function onMouseMove(event) {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (group) {
+        const targetX = mouse.x * 0.6;
+        const targetY = mouse.y * 0.4;
+        group.rotation.y += (targetX - group.rotation.y) * 0.05;
+        group.rotation.x += (targetY - group.rotation.x) * 0.05;
+
+        const arrowTilt = mouse.y * 10;
+        leftArrow.style.transform = `translateY(-50%) rotate(${arrowTilt}deg)`;
+        rightArrow.style.transform = `translateY(-50%) rotate(${arrowTilt}deg)`;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+  </script>
+</body>
+</html>
